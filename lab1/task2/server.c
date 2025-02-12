@@ -9,6 +9,10 @@
 #define NUMBER_MARKS 4
 #endif
 
+struct server {
+    const char *requests, *responses;
+};
+
 enum fsm_states {
     fsm_start,
     fsm_name = fsm_start,
@@ -80,23 +84,23 @@ static void request_fsm_step(struct request_fsm *fsm, char *line)
     free(line);
 }
 
-static void server_send_response(const char *responses, const char *msg)
+static void server_send_response(const struct server *serv, const char *msg)
 {
-    FILE *resp = fopen(responses, "w");
+    FILE *resp = fopen(serv->responses, "w");
     if (!resp) {
-        perror(responses);
+        perror(serv->responses);
         return;
     }
     fputs(msg, resp);
     fclose(resp);
 }
 
-static void server_send_error(const char *responses)
+static void server_send_error(const struct server *serv)
 {
-    server_send_response(responses, "An error has occurred\n");
+    server_send_response(serv, "An error has occurred\n");
 }
 
-static void server_handle_request(char *request, const char *responses)
+static void server_handle_request(const struct server *serv, char *request)
 {
     char *nl;
     struct request_fsm fsm;
@@ -113,34 +117,34 @@ static void server_handle_request(char *request, const char *responses)
     }
     if (fsm.state == fsm_finish) {
         char *msg = scholarship(fsm.name, fsm.marks, fsm.marks_usage);
-        server_send_response(responses, msg);
+        server_send_response(serv, msg);
         free(msg);
     } else if (fsm.state == fsm_error) {
-        server_send_error(responses);
+        server_send_error(serv);
     }
 
     request_fsm_clear(&fsm);
 }
 
-static int server_run(const char *requests, const char *responses)
+static int server_run(const struct server *serv)
 {
     FILE *req;
     struct string *str = str_init();
 
-    req = fopen(requests, "r");
+    req = fopen(serv->requests, "r");
     if (!req) {
-        perror(requests);
+        perror(serv->requests);
         return 2;
     }
 
     for (;;) {
         int c = fgetc(req);
         if (c == EOF) {
-            server_handle_request(str->data, responses);
+            server_handle_request(serv, str->data);
 
             str_clear(str);
             fclose(req);
-            req = fopen(requests, "r");
+            req = fopen(serv->requests, "r");
         } else {
             str_append(str, c);
         }
@@ -154,14 +158,15 @@ static int server_run(const char *requests, const char *responses)
 
 int main(int argc, char **argv)
 {
-    char *requests, *responses;
+    struct server serv;
+
     if (argc != 3) {
         fprintf(stderr, "Expected: %s <requests> <responses>\n", argv[0]);
         return 1;
     }
 
-    requests = argv[1];
-    responses = argv[2];
+    serv.requests = argv[1];
+    serv.responses = argv[2];
 
-    return server_run(requests, responses);
+    return server_run(&serv);
 }
