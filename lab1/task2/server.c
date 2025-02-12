@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "scholarship.h"
 #include "str.h"
 
 #if !defined(NUMBER_MARKS) || NUMBER_MARKS < 1
@@ -79,7 +80,23 @@ static void request_fsm_step(struct request_fsm *fsm, char *line)
     free(line);
 }
 
-static void server_handle_request(char *request)
+static void server_send_response(const char *responses, const char *msg)
+{
+    FILE *resp = fopen(responses, "w");
+    if (!resp) {
+        perror(responses);
+        return;
+    }
+    fputs(msg, resp);
+    fclose(resp);
+}
+
+static void server_send_error(const char *responses)
+{
+    server_send_response(responses, "An error has occurred\n");
+}
+
+static void server_handle_request(char *request, const char *responses)
 {
     char *nl;
     struct request_fsm fsm;
@@ -95,13 +112,17 @@ static void server_handle_request(char *request)
         request_fsm_step(&fsm, line);
     }
     if (fsm.state == fsm_finish) {
-        /* TODO */
+        char *msg = scholarship(fsm.name, fsm.marks, fsm.marks_usage);
+        server_send_response(responses, msg);
+        free(msg);
+    } else if (fsm.state == fsm_error) {
+        server_send_error(responses);
     }
 
     request_fsm_clear(&fsm);
 }
 
-static int server_run(char *requests, char *responses)
+static int server_run(const char *requests, const char *responses)
 {
     FILE *req;
     struct string *str = str_init();
@@ -115,7 +136,7 @@ static int server_run(char *requests, char *responses)
     for (;;) {
         int c = fgetc(req);
         if (c == EOF) {
-            server_handle_request(str->data);
+            server_handle_request(str->data, responses);
 
             str_clear(str);
             fclose(req);
