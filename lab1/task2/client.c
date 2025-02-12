@@ -26,6 +26,24 @@ static int send_request(const char *requests, const char *name, char **marks)
     return 1;
 }
 
+static void receive_response(const char *responses)
+{
+    int c;
+    FILE *resp;
+
+    resp = fopen(responses, "r");
+    if (!resp) {
+        perror(responses);
+        return;
+    }
+
+    while ((c = fgetc(resp)) != EOF) {
+        putchar(c);
+    }
+
+    fclose(resp);
+}
+
 int main(int argc, char **argv)
 {
     int ok;
@@ -46,6 +64,7 @@ int main(int argc, char **argv)
     if (!ok) {
         return 2;
     }
+    receive_response(responses);
 
     return 0;
 }
