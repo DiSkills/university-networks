@@ -5,7 +5,7 @@
 #define NUMBER_MARKS 4
 #endif
 
-int strs_to_ints(char **strings, int *arr, int size)
+static int strs_to_ints(char **strings, int *arr, int size)
 {
     int i;
 
@@ -23,7 +23,7 @@ int strs_to_ints(char **strings, int *arr, int size)
     return 1;
 }
 
-int min(const int *arr, int size)
+static int min(const int *arr, int size)
 {
     int i, mn;
 
@@ -36,7 +36,7 @@ int min(const int *arr, int size)
     return mn;
 }
 
-const char *scholarship_msg(const int *marks, int size)
+static const char *scholarship_msg(const int *marks, int size)
 {
     int mn = min(marks, size);
 
@@ -51,7 +51,7 @@ const char *scholarship_msg(const int *marks, int size)
     return "not, and you have debts";
 }
 
-int count_debts(const int *marks, int size)
+static int count_debts(const int *marks, int size)
 {
     int i, count;
 
