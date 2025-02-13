@@ -27,14 +27,14 @@ struct server {
 };
 
 static void server_send_response(const struct server *serv,
-                                 const struct response *response)
+                                 const struct response *resp)
 {
     int fd = open(serv->responses, O_WRONLY);
     if (fd == -1) {
         perror(serv->responses);
         return;
     }
-    write(fd, response, sizeof(*response));
+    write(fd, resp, sizeof(*resp));
     close(fd);
 }
 
@@ -57,22 +57,22 @@ static void server_handle_request(const struct server *serv)
 
 static int server_run(struct server *serv)
 {
-    FILE *req;
+    FILE *freq;
 
-    req = fopen(serv->requests, "r");
-    if (!req) {
+    freq = fopen(serv->requests, "r");
+    if (!freq) {
         perror(serv->requests);
         return 2;
     }
 
     for (;;) {
-        int c = fgetc(req);
+        int c = fgetc(freq);
         if (c == EOF) {
             server_handle_request(serv);
 
             serv->buffer_usage = 0;
-            fclose(req);
-            req = fopen(serv->requests, "r");
+            fclose(freq);
+            freq = fopen(serv->requests, "r");
             continue;
         }
 
@@ -82,7 +82,8 @@ static int server_run(struct server *serv)
         serv->buffer_usage++;
     }
 
-    fclose(req);
+    fclose(freq);
+    return 0;
 }
 
 int main(int argc, char **argv)

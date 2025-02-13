@@ -18,8 +18,10 @@ enum statuses {
 };
 
 struct request {
-    char name[NAME_SIZE];
-    int marks[NUMBER_MARKS];
+    struct {
+        char name[NAME_SIZE];
+        int marks[NUMBER_MARKS];
+    } student;
 };
 
 enum scholarship_types {
@@ -79,10 +81,11 @@ static int strs_to_ints(char **strings, int *arr, int size)
     return 1;
 }
 
-static int request_init(struct request *req, char *name, char **str_marks)
+static int request_init(struct request *req, const char *name,
+                        char **str_marks)
 {
-    strncpy(req->name, name, sizeof(req->name));
-    return strs_to_ints(str_marks, req->marks, NUMBER_MARKS);
+    strncpy(req->student.name, name, sizeof(req->student.name));
+    return strs_to_ints(str_marks, req->student.marks, NUMBER_MARKS);
 }
 
 static void receive_response(struct client *cl)
@@ -131,8 +134,8 @@ static int send_request(struct client *cl, const struct request *req)
 int main(int argc, char **argv)
 {
     int ok;
-    struct request req;
     struct client cl;
+    struct request req;
     char *name, **marks;
 
     if (argc != 4 + NUMBER_MARKS) {

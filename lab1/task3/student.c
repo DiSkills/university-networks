@@ -43,12 +43,12 @@ static int count_debts(const struct request_student *st)
     return count;
 }
 
-struct response_student student(const struct request_student *student)
+struct response_student student(const struct request_student *st)
 {
-    struct response_student st;
+    struct response_student rst;
 
-    strncpy(st.name, student->name, sizeof(st.name));
-    st.scholarship = scholarship(student);
-    st.debts = count_debts(student);
-    return st;
+    strncpy(rst.name, st->name, sizeof(rst.name));
+    rst.scholarship = scholarship(st);
+    rst.debts = count_debts(st);
+    return rst;
 }
