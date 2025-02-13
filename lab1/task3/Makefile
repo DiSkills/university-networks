@@ -1,4 +1,4 @@
-SRCMODULES = scholarship.c
+SRCMODULES = student.c
 OBJMODULES = $(SRCMODULES:.c=.o)
 
 CC = gcc
