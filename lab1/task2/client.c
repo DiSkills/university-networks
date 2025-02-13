@@ -5,49 +5,58 @@
 #define NUMBER_MARKS 4
 #endif
 
-static int send_request(const char *requests, const char *name, char **marks)
+struct student {
+    char *name;
+    char **marks;
+};
+
+struct client {
+    const char *requests, *responses;
+};
+
+static int send_request(const struct client *cl, const struct student *st)
 {
     int i;
     FILE *f;
 
-    f = fopen(requests, "w");
+    f = fopen(cl->requests, "w");
     if (!f) {
-        perror(requests);
+        perror(cl->requests);
         return 0;
     }
 
-    fprintf(f, "%s\n", name);
+    fprintf(f, "%s\n", st->name);
     for (i = 0; i < NUMBER_MARKS; i++) {
-        fprintf(f, "%s\n", marks[i]);
+        fprintf(f, "%s\n", st->marks[i]);
     }
-    fflush(f);
 
     fclose(f);
     return 1;
 }
 
-static void receive_response(const char *responses)
+static void receive_response(const struct client *cl)
 {
     int c;
-    FILE *resp;
+    FILE *fresp;
 
-    resp = fopen(responses, "r");
-    if (!resp) {
-        perror(responses);
+    fresp = fopen(cl->responses, "r");
+    if (!fresp) {
+        perror(cl->responses);
         return;
     }
 
-    while ((c = fgetc(resp)) != EOF) {
+    while ((c = fgetc(fresp)) != EOF) {
         putchar(c);
     }
 
-    fclose(resp);
+    fclose(fresp);
 }
 
 int main(int argc, char **argv)
 {
     int ok;
-    char *requests, *responses, *name, **marks;
+    struct client cl;
+    struct student st;
 
     if (argc != 4 + NUMBER_MARKS) {
         fprintf(stderr, "Expected: %s <requests> <responses> "
@@ -55,16 +64,15 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    requests = argv[1];
-    responses = argv[2];
-    name = argv[3];
-    marks = argv + 4;
+    cl.requests = argv[1];
+    cl.responses = argv[2];
+    st.name = argv[3];
+    st.marks = argv + 4;
 
-    ok = send_request(requests, name, marks);
+    ok = send_request(&cl, &st);
     if (!ok) {
         return 2;
     }
-    receive_response(responses);
-
+    receive_response(&cl);
     return 0;
 }

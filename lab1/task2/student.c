@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 
-#include "scholarship.h"
+#include "student.h"
 
 static int min(const int *arr, int size)
 {
@@ -16,9 +16,9 @@ static int min(const int *arr, int size)
     return mn;
 }
 
-static const char *scholarship_msg(const int *marks, int size)
+static const char *scholarship(const struct student *st)
 {
-    int mn = min(marks, size);
+    int mn = min(st->marks, st->marks_usage);
 
     switch (mn) {
     case 5:
@@ -31,24 +31,24 @@ static const char *scholarship_msg(const int *marks, int size)
     return "not, and you have debts";
 }
 
-static int count_debts(const int *marks, int size)
+static int count_debts(const struct student *st)
 {
     int i, count;
 
     count = 0;
-    for (i = 0; i < size; i++) {
-        if (marks[i] < 3) {
+    for (i = 0; i < st->marks_usage; i++) {
+        if (st->marks[i] < 3) {
             count++;
         }
     }
     return count;
 }
 
-char *scholarship(const char *name, const int *marks, int size)
+char *report(const struct student *st)
 {
     char *str;
 
     asprintf(&str, "Student: %s.\nScholarship is %s.\nNumber of debts: %d\n",
-             name, scholarship_msg(marks, size), count_debts(marks, size));
+             st->name, scholarship(st), count_debts(st));
     return str;
 }

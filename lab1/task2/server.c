@@ -2,12 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "scholarship.h"
 #include "str.h"
-
-#if !defined(NUMBER_MARKS) || NUMBER_MARKS < 1
-#define NUMBER_MARKS 4
-#endif
+#include "student.h"
 
 struct server {
     const char *requests, *responses;
@@ -21,33 +17,30 @@ enum fsm_states {
     fsm_error,
 };
 
-struct request_fsm {
+struct fsm {
     enum fsm_states state;
 
-    char *name;
-
-    int marks[NUMBER_MARKS];
-    int marks_usage;
+    struct student student;
 };
 
-static void request_fsm_init(struct request_fsm *fsm)
+static void fsm_init(struct fsm *fsm)
 {
     fsm->state = fsm_start;
-    fsm->name = NULL;
-    fsm->marks_usage = 0;
+    fsm->student.name = NULL;
+    fsm->student.marks_usage = 0;
 }
 
-static void request_fsm_clear(struct request_fsm *fsm)
+static void fsm_clear(struct fsm *fsm)
 {
     fsm->state = fsm_start;
-    if (fsm->name) {
-        free(fsm->name);
+    if (fsm->student.name) {
+        free(fsm->student.name);
     }
-    fsm->name = NULL;
-    fsm->marks_usage = 0;
+    fsm->student.name = NULL;
+    fsm->student.marks_usage = 0;
 }
 
-static void request_fsm_handle_mark(struct request_fsm *fsm, char *line)
+static void fsm_handle_mark(struct fsm *fsm, char *line)
 {
     long mark;
     char *endptr;
@@ -58,23 +51,23 @@ static void request_fsm_handle_mark(struct request_fsm *fsm, char *line)
         return;
     }
 
-    fsm->marks[fsm->marks_usage] = mark;
-    fsm->marks_usage++;
-    if (fsm->marks_usage >= NUMBER_MARKS) {
+    fsm->student.marks[fsm->student.marks_usage] = mark;
+    fsm->student.marks_usage++;
+    if (fsm->student.marks_usage >= NUMBER_MARKS) {
         fsm->state = fsm_finish;
         return;
     }
 }
 
-static void request_fsm_step(struct request_fsm *fsm, char *line)
+static void fsm_step(struct fsm *fsm, char *line)
 {
     switch (fsm->state) {
     case fsm_name:
-        fsm->name = line;
+        fsm->student.name = line;
         fsm->state = fsm_mark;
         return;
     case fsm_mark:
-        request_fsm_handle_mark(fsm, line);
+        fsm_handle_mark(fsm, line);
         break;
     case fsm_finish:
         break;
@@ -86,13 +79,13 @@ static void request_fsm_step(struct request_fsm *fsm, char *line)
 
 static void server_send_response(const struct server *serv, const char *msg)
 {
-    FILE *resp = fopen(serv->responses, "w");
-    if (!resp) {
+    FILE *fresp = fopen(serv->responses, "w");
+    if (!fresp) {
         perror(serv->responses);
         return;
     }
-    fputs(msg, resp);
-    fclose(resp);
+    fputs(msg, fresp);
+    fclose(fresp);
 }
 
 static void server_send_error(const struct server *serv)
@@ -103,9 +96,9 @@ static void server_send_error(const struct server *serv)
 static void server_handle_request(const struct server *serv, char *request)
 {
     char *nl;
-    struct request_fsm fsm;
-    request_fsm_init(&fsm);
+    struct fsm fsm;
 
+    fsm_init(&fsm);
     while ((nl = strchr(request, '\n')) != NULL) {
         char *line;
 
@@ -113,47 +106,49 @@ static void server_handle_request(const struct server *serv, char *request)
         line = strdup(request);
         request = nl + 1;
 
-        request_fsm_step(&fsm, line);
+        fsm_step(&fsm, line);
     }
+
     if (fsm.state == fsm_finish) {
-        char *msg = scholarship(fsm.name, fsm.marks, fsm.marks_usage);
-        server_send_response(serv, msg);
-        free(msg);
+        char *rep = report(&fsm.student);
+        server_send_response(serv, rep);
+        free(rep);
     } else if (fsm.state == fsm_error) {
         server_send_error(serv);
     }
 
-    request_fsm_clear(&fsm);
+    fsm_clear(&fsm);
 }
 
 static int server_run(const struct server *serv)
 {
-    FILE *req;
+    FILE *freq;
     struct string *str = str_init();
 
-    req = fopen(serv->requests, "r");
-    if (!req) {
+    freq = fopen(serv->requests, "r");
+    if (!freq) {
         perror(serv->requests);
         return 2;
     }
 
     for (;;) {
-        int c = fgetc(req);
+        int c = fgetc(freq);
         if (c == EOF) {
             server_handle_request(serv, str->data);
 
             str_clear(str);
-            fclose(req);
-            req = fopen(serv->requests, "r");
+            fclose(freq);
+            freq = fopen(serv->requests, "r");
         } else {
             str_append(str, c);
         }
     }
 
-    fclose(req);
+    fclose(freq);
 
     str_del(str);
     free(str);
+    return 0;
 }
 
 int main(int argc, char **argv)
