@@ -1,6 +1,8 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #if !defined(NUMBER_MARKS) || NUMBER_MARKS < 1
 #define NUMBER_MARKS 4
@@ -13,6 +15,10 @@
 struct request {
     char name[NAME_SIZE];
     int marks[NUMBER_MARKS];
+};
+
+struct server {
+    const char *requests, *responses;
 };
 
 static int strs_to_ints(char **strings, int *arr, int size)
@@ -39,10 +45,23 @@ static int request_init(struct request *req, char *name, char **str_marks)
     return strs_to_ints(str_marks, req->marks, NUMBER_MARKS);
 }
 
+static int send_request(const struct server *serv, const struct request *req)
+{
+    int fd = open(serv->requests, O_WRONLY);
+    if (fd == -1) {
+        perror(serv->requests);
+        return 0;
+    }
+    write(fd, req, sizeof(*req));
+    close(fd);
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     int ok;
     struct request req;
+    struct server serv;
     char *name, **marks;
 
     if (argc != 4 + NUMBER_MARKS) {
@@ -51,6 +70,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    serv.requests = argv[1];
+    serv.responses = argv[2];
+
     name = argv[3];
     marks = argv + 4;
 
@@ -58,6 +80,10 @@ int main(int argc, char **argv)
     if (!ok) {
         fprintf(stderr, "The marks are incorrect\n");
         return 2;
+    }
+    ok = send_request(&serv, &req);
+    if (!ok) {
+        return 3;
     }
     return 0;
 }
