@@ -12,14 +12,54 @@
 #define NAME_SIZE 120
 #endif
 
+enum statuses {
+    status_ok,
+    status_no,
+};
+
 struct request {
     char name[NAME_SIZE];
     int marks[NUMBER_MARKS];
 };
 
-struct server {
-    const char *requests, *responses;
+enum scholarship_types {
+    scholarship_debts,
+    scholarship_no,
+    scholarship_regular,
+    scholarship_increased,
 };
+
+struct response {
+    enum statuses status;
+
+    struct {
+        char name[NAME_SIZE];
+        enum scholarship_types scholarship;
+        int debts;
+    } student;
+};
+
+struct client {
+    const char *requests, *responses;
+
+    char buffer[sizeof(struct request)];
+    int buffer_usage;
+};
+
+static const char *scholarship_msg(enum scholarship_types scholarship)
+{
+    switch (scholarship) {
+    case scholarship_increased:
+        return "increased";
+    case scholarship_regular:
+        return "regular";
+    case scholarship_no:
+        return "not";
+    case scholarship_debts:
+        return "not, and you have debts";
+    }
+    return NULL;
+}
 
 static int strs_to_ints(char **strings, int *arr, int size)
 {
@@ -45,11 +85,42 @@ static int request_init(struct request *req, char *name, char **str_marks)
     return strs_to_ints(str_marks, req->marks, NUMBER_MARKS);
 }
 
-static int send_request(const struct server *serv, const struct request *req)
+static void receive_response(struct client *cl)
 {
-    int fd = open(serv->requests, O_WRONLY);
+    int c;
+    FILE *fresp;
+    struct response *resp;
+
+    fresp = fopen(cl->responses, "r");
+    if (!fresp) {
+        perror(cl->responses);
+        return;
+    }
+
+    while ((c = fgetc(fresp)) != EOF) {
+        if (cl->buffer_usage < sizeof(cl->buffer)) {
+            cl->buffer[cl->buffer_usage] = c;
+        }
+        cl->buffer_usage++;
+    }
+
+    resp = (struct response *)cl->buffer;
+    if (resp->status == status_ok) {
+        const char *scholarship = scholarship_msg(resp->student.scholarship);
+        printf("Student: %s.\nScholarship is %s.\nNumber of debts: %d\n",
+               resp->student.name, scholarship, resp->student.debts);
+    } else {
+        printf("An error has occurred\n");
+    }
+
+    fclose(fresp);
+}
+
+static int send_request(struct client *cl, const struct request *req)
+{
+    int fd = open(cl->requests, O_WRONLY);
     if (fd == -1) {
-        perror(serv->requests);
+        perror(cl->requests);
         return 0;
     }
     write(fd, req, sizeof(*req));
@@ -61,7 +132,7 @@ int main(int argc, char **argv)
 {
     int ok;
     struct request req;
-    struct server serv;
+    struct client cl;
     char *name, **marks;
 
     if (argc != 4 + NUMBER_MARKS) {
@@ -70,8 +141,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    serv.requests = argv[1];
-    serv.responses = argv[2];
+    cl.requests = argv[1];
+    cl.responses = argv[2];
+    cl.buffer_usage = 0;
 
     name = argv[3];
     marks = argv + 4;
@@ -81,9 +153,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "The marks are incorrect\n");
         return 2;
     }
-    ok = send_request(&serv, &req);
+    ok = send_request(&cl, &req);
     if (!ok) {
         return 3;
     }
+    receive_response(&cl);
     return 0;
 }
