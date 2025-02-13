@@ -1,14 +1,6 @@
 #include <stdio.h>
 
-#include "scholarship.h"
-
-#if !defined(NUMBER_MARKS) || NUMBER_MARKS < 1
-#define NUMBER_MARKS 4
-#endif
-
-#ifndef NAME_SIZE
-#define NAME_SIZE 120
-#endif
+#include "student.h"
 
 enum statuses {
     status_ok,
@@ -16,14 +8,13 @@ enum statuses {
 };
 
 struct request {
-    char name[NAME_SIZE];
-    int marks[NUMBER_MARKS];
+    struct request_student student;
 };
 
 struct response {
     enum statuses status;
 
-    struct scholarship scholarship;
+    struct response_student student;
 };
 
 struct server {
@@ -39,13 +30,14 @@ static void server_handle_request(const struct server *serv)
     struct response resp;
 
     if (serv->buffer_usage != sizeof(serv->buffer)) {
+        resp.status = status_no;
         /* TODO: send status */
         return;
     }
 
     req = (struct request *)serv->buffer;
     resp.status = status_ok;
-    resp.scholarship = scholarship(req->name, req->marks, NUMBER_MARKS);
+    resp.student = student(&req->student);
     /* TODO: send response */
 }
 
