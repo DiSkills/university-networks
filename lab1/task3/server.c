@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "scholarship.h"
+
 #if !defined(NUMBER_MARKS) || NUMBER_MARKS < 1
 #define NUMBER_MARKS 4
 #endif
@@ -8,9 +10,20 @@
 #define NAME_SIZE 120
 #endif
 
+enum statuses {
+    status_ok,
+    status_no,
+};
+
 struct request {
     char name[NAME_SIZE];
     int marks[NUMBER_MARKS];
+};
+
+struct response {
+    enum statuses status;
+
+    struct scholarship scholarship;
 };
 
 struct server {
@@ -19,6 +32,22 @@ struct server {
     char buffer[sizeof(struct request)];
     int buffer_usage;
 };
+
+static void server_handle_request(const struct server *serv)
+{
+    struct request *req;
+    struct response resp;
+
+    if (serv->buffer_usage != sizeof(serv->buffer)) {
+        /* TODO: send status */
+        return;
+    }
+
+    req = (struct request *)serv->buffer;
+    resp.status = status_ok;
+    resp.scholarship = scholarship(req->name, req->marks, NUMBER_MARKS);
+    /* TODO: send response */
+}
 
 static int server_run(struct server *serv)
 {
@@ -33,7 +62,7 @@ static int server_run(struct server *serv)
     for (;;) {
         int c = fgetc(req);
         if (c == EOF) {
-            /* TODO: handle request */
+            server_handle_request(serv);
 
             serv->buffer_usage = 0;
             fclose(req);
