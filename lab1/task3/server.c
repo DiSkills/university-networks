@@ -1,4 +1,6 @@
+#include <fcntl.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "student.h"
 
@@ -24,6 +26,18 @@ struct server {
     int buffer_usage;
 };
 
+static void server_send_response(const struct server *serv,
+                                 const struct response *response)
+{
+    int fd = open(serv->responses, O_WRONLY);
+    if (fd == -1) {
+        perror(serv->responses);
+        return;
+    }
+    write(fd, response, sizeof(*response));
+    close(fd);
+}
+
 static void server_handle_request(const struct server *serv)
 {
     struct request *req;
@@ -31,14 +45,14 @@ static void server_handle_request(const struct server *serv)
 
     if (serv->buffer_usage != sizeof(serv->buffer)) {
         resp.status = status_no;
-        /* TODO: send status */
+        server_send_response(serv, &resp);
         return;
     }
 
     req = (struct request *)serv->buffer;
     resp.status = status_ok;
     resp.student = student(&req->student);
-    /* TODO: send response */
+    server_send_response(serv, &resp);
 }
 
 static int server_run(struct server *serv)
