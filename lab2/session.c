@@ -1,8 +1,11 @@
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "session.h"
 #include "student.h"
+
+#ifndef BUFFER_SIZE
+#define BUFFER_SIZE 2048
+#endif
 
 enum fsm_states {
     fsm_start,
@@ -15,7 +18,7 @@ enum fsm_states {
 struct session {
     int fd;
 
-    char buffer;
+    char buffer[BUFFER_SIZE];
     int buffer_usage;
 
     enum fsm_states state;
@@ -37,7 +40,6 @@ struct session *session_init(int fd)
 
 void session_del(struct session *sess)
 {
-    close(sess->fd);
     sess->fd = -1;
     sess->buffer_usage = 0;
     sess->state = fsm_start;

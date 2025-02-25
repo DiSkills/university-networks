@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "server.h"
 #include "session.h"
@@ -66,6 +67,14 @@ static void server_accept(struct server *serv)
         serv->session_array_size = newlen;
     }
     serv->session_array[fd] = session_init(fd);
+}
+
+static void server_close(struct server *serv, int fd)
+{
+    close(fd);
+    session_del(serv->session_array[fd]);
+    free(serv->session_array[fd]);
+    serv->session_array[fd] = NULL;
 }
 
 int server_run(struct server *serv)
