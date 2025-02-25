@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "session.h"
 #include "student.h"
@@ -48,4 +50,32 @@ void session_del(struct session *sess)
         sess->student.name = NULL;
     }
     sess->student.marks_usage = 0;
+}
+
+static void session_send_string(const struct session *sess, const char *str)
+{
+    write(sess->fd, str, strlen(str));
+}
+
+int session_receive(struct session *sess)
+{
+    int rc = read(sess->fd, sess->buffer + sess->buffer_usage,
+            sizeof(sess->buffer) - sess->buffer_usage);
+    if (rc == -1) {
+        sess->state = fsm_error;
+        return 0;
+    }
+    if (rc == 0) {
+        sess->state = fsm_finish;
+        return 0;
+    }
+    sess->buffer_usage += rc;
+    /* TODO: check */
+
+    if (sess->buffer_usage >= sizeof(sess->buffer)) {
+        session_send_string(sess, "Line is too long...\n");
+        sess->state = fsm_error;
+        return 0;
+    }
+    return 1;
 }

@@ -107,7 +107,10 @@ int server_run(struct server *serv)
 
         for (fd = 0; fd < serv->session_array_size; fd++) {
             if (serv->session_array[fd] && FD_ISSET(fd, &readfds)) {
-                /* TODO: handle client */
+                int srr = session_receive(serv->session_array[fd]);
+                if (!srr) {
+                    server_close(serv, fd);
+                }
             }
         }
     }
