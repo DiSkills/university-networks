@@ -17,5 +17,6 @@ struct server {
 };
 
 int server_init(struct server *serv, int port);
+int server_run(struct server *serv);
 
 #endif

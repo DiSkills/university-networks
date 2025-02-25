@@ -25,5 +25,5 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    return 0;
+    return server_run(&serv);
 }
