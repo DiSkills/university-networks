@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 
 #include "server.h"
+#include "session.h"
 
 int server_init(struct server *serv, int port)
 {
@@ -42,6 +43,31 @@ int server_init(struct server *serv, int port)
     return 1;
 }
 
+static void server_accept(struct server *serv)
+{
+    int i, fd;
+
+    fd = accept(serv->lsd, NULL, NULL);
+    if (fd == -1) {
+        perror("accept");
+        return;
+    }
+
+    if (fd >= serv->session_array_size) {
+        int newlen = serv->session_array_size;
+        while (fd >= newlen) {
+            newlen += INIT_SESSION_ARRAY_SIZE;
+        }
+        serv->session_array = realloc(serv->session_array,
+                newlen * sizeof(*serv->session_array));
+        for (i = serv->session_array_size; i < newlen; i++) {
+            serv->session_array[i] = NULL;
+        }
+        serv->session_array_size = newlen;
+    }
+    serv->session_array[fd] = session_init(fd);
+}
+
 int server_run(struct server *serv)
 {
     for (;;) {
@@ -67,7 +93,7 @@ int server_run(struct server *serv)
         }
 
         if (FD_ISSET(serv->lsd, &readfds)) {
-            /* TODO: accept client */
+            server_accept(serv);
         }
 
         for (fd = 0; fd < serv->session_array_size; fd++) {
