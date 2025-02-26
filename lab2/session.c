@@ -57,6 +57,72 @@ static void session_send_string(const struct session *sess, const char *str)
     write(sess->fd, str, strlen(str));
 }
 
+static void session_handle_mark(struct session *sess, char *line)
+{
+    long mark;
+    char *endptr;
+
+    mark = strtol(line, &endptr, 10);
+    if (!*line || *endptr || mark < 2 || mark > 5) {
+        sess->state = fsm_error;
+        return;
+    }
+
+    sess->student.marks[sess->student.marks_usage] = mark;
+    sess->student.marks_usage++;
+    if (sess->student.marks_usage >= NUMBER_MARKS) {
+        char *msg = report(&sess->student);
+        session_send_string(sess, msg);
+        free(msg);
+
+        free(sess->student.name);
+        sess->student.name = NULL;
+        sess->student.marks_usage = 0;
+
+        sess->state = fsm_start;
+        return;
+    }
+}
+
+static void session_fsm_step(struct session *sess, char *line)
+{
+    switch (sess->state) {
+    case fsm_name:
+        sess->student.name = line;
+        sess->state = fsm_mark;
+        return;
+    case fsm_mark:
+        session_handle_mark(sess, line);
+        break;
+    case fsm_finish:
+        break;
+    case fsm_error:
+        break;
+    }
+    free(line);
+}
+
+static void session_check_lf(struct session *sess)
+{
+    char *nl;
+
+    while ((nl = memchr(sess->buffer, '\n', sess->buffer_usage)) != NULL) {
+        char *line;
+        int pos;
+
+        pos = nl - sess->buffer;
+        if (pos > 0 && sess->buffer[pos - 1] == '\r') {
+            sess->buffer[pos - 1] = '\0';
+        }
+        sess->buffer[pos] = '\0';
+
+        line = strdup(sess->buffer);
+        sess->buffer_usage -= pos + 1;
+        memmove(sess->buffer, nl + 1, sess->buffer_usage);
+        session_fsm_step(sess, line);
+    }
+}
+
 int session_receive(struct session *sess)
 {
     int rc = read(sess->fd, sess->buffer + sess->buffer_usage,
@@ -70,8 +136,8 @@ int session_receive(struct session *sess)
         return 0;
     }
     sess->buffer_usage += rc;
-    /* TODO: check */
 
+    session_check_lf(sess);
     if (sess->buffer_usage >= sizeof(sess->buffer)) {
         session_send_string(sess, "Line is too long...\n");
         sess->state = fsm_error;

@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include "server.h"
-#include "session.h"
 
 int server_init(struct server *serv, int port)
 {
@@ -25,7 +24,6 @@ int server_init(struct server *serv, int port)
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(port);
-
     res = bind(lsd, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
         perror("bind");

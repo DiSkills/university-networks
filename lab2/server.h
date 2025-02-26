@@ -9,10 +9,12 @@
 #define INIT_SESSION_ARRAY_SIZE 16
 #endif
 
+#include "session.h"
+
 struct server {
     int lsd;
 
-    void **session_array;
+    struct session **session_array;
     int session_array_size;
 };
 
