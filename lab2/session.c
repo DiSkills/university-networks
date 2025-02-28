@@ -27,6 +27,11 @@ struct session {
     struct student student;
 };
 
+static void session_send_string(const struct session *sess, const char *str)
+{
+    write(sess->fd, str, strlen(str));
+}
+
 struct session *session_init(int fd)
 {
     struct session *sess = malloc(sizeof(*sess));
@@ -37,6 +42,7 @@ struct session *session_init(int fd)
     sess->student.name = NULL;
     sess->student.marks_usage = 0;
 
+    session_send_string(sess, "Input the student's name:\n");
     return sess;
 }
 
@@ -52,11 +58,6 @@ void session_del(struct session *sess)
     sess->student.marks_usage = 0;
 }
 
-static void session_send_string(const struct session *sess, const char *str)
-{
-    write(sess->fd, str, strlen(str));
-}
-
 static void session_handle_mark(struct session *sess, char *line)
 {
     long mark;
@@ -64,7 +65,7 @@ static void session_handle_mark(struct session *sess, char *line)
 
     mark = strtol(line, &endptr, 10);
     if (!*line || *endptr || mark < 2 || mark > 5) {
-        sess->state = fsm_error;
+        session_send_string(sess, "The mark is invalid. Try again:\n");
         return;
     }
 
@@ -78,9 +79,8 @@ static void session_handle_mark(struct session *sess, char *line)
         free(sess->student.name);
         sess->student.name = NULL;
         sess->student.marks_usage = 0;
-
         sess->state = fsm_start;
-        return;
+        session_send_string(sess, "Input the student's name:\n");
     }
 }
 
@@ -90,6 +90,7 @@ static void session_fsm_step(struct session *sess, char *line)
     case fsm_name:
         sess->student.name = line;
         sess->state = fsm_mark;
+        session_send_string(sess, "Input four marks:\n");
         return;
     case fsm_mark:
         session_handle_mark(sess, line);

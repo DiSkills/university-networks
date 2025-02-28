@@ -42,7 +42,7 @@ int server_init(struct server *serv, int port)
     return 1;
 }
 
-static void server_accept(struct server *serv)
+static void server_accept_client(struct server *serv)
 {
     int i, fd;
 
@@ -67,7 +67,7 @@ static void server_accept(struct server *serv)
     serv->session_array[fd] = session_init(fd);
 }
 
-static void server_close(struct server *serv, int fd)
+static void server_close_session(struct server *serv, int fd)
 {
     close(fd);
     session_del(serv->session_array[fd]);
@@ -100,14 +100,14 @@ int server_run(struct server *serv)
         }
 
         if (FD_ISSET(serv->lsd, &readfds)) {
-            server_accept(serv);
+            server_accept_client(serv);
         }
 
         for (fd = 0; fd < serv->session_array_size; fd++) {
             if (serv->session_array[fd] && FD_ISSET(fd, &readfds)) {
                 int srr = session_receive(serv->session_array[fd]);
                 if (!srr) {
-                    server_close(serv, fd);
+                    server_close_session(serv, fd);
                 }
             }
         }

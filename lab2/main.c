@@ -14,6 +14,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Expected: %s <port>\n", argv[0]);
         return 1;
     }
+
     port = strtol(argv[1], &endptr, 10);
     if (!*argv[1] || *endptr) {
         fprintf(stderr, "The port is invalid\n");
@@ -24,6 +25,5 @@ int main(int argc, char **argv)
     if (!ok) {
         return 3;
     }
-
     return server_run(&serv);
 }
